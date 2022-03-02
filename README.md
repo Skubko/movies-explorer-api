@@ -1,5 +1,5 @@
-# Проект Диплом бэкенд
+# movies-explorer-api
 
-api.movies.skubko.nomoredomains.rocks - бэкенд
-51.250.15.232
-movies.skubko.nomoredomains.rocks - фронтенд
+URL-адрес сервера (https): https://api.movies.skubko.nomoredomains.rocks/
+URL-адрес Сервера (http): http://api.movies.skubko.nomoredomains.rocks/
+IP-адрес сервера: `178.154.223.125`
