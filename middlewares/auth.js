@@ -1,28 +1,26 @@
 const jwt = require('jsonwebtoken');
-const NotValidEmailOrPassword = require('../errors/NotValidEmailOrPassword');
-const { JWT_SECRET } = require('../config');
+const UnauthorizedErrors = require('../errors/unauthorized-err');
 
-const handleAuthError = () => {
-  throw new NotValidEmailOrPassword('произошла ошибка авторизации');
-};
-
-const extractBearerToken = (header) => header.replace('Bearer ', '');
+const { NODE_ENV, JWT_SECRET, JWT_DEV = 'some-secret-key' } = process.env;
+const secretKey = NODE_ENV === 'production' ? JWT_SECRET : JWT_DEV;
 
 module.exports = (req, res, next) => {
-  const { authorization } = req.headers;
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return handleAuthError();
+  // const { authorization } = req.headers; УДАЛИТЬ!
+  const cookiesJWT = req.cookies.jwt;
+
+  if (!cookiesJWT) {
+    throw new UnauthorizedErrors('Необходима авторизация');
   }
 
-  const token = extractBearerToken(authorization);
+  const token = cookiesJWT.replace('Bearer ', '');
   let payload;
+
   try {
-    payload = jwt.verify(token, JWT_SECRET);
+    payload = jwt.verify(token, secretKey);
   } catch (err) {
-    return handleAuthError();
+    throw new UnauthorizedErrors('Необходима авторизация');
   }
 
-  req.user = payload;
-  next();
-  return (next);
+  req.user = payload; // записываем пейлоуд в объект запроса;
+  next(); // пропускаем запрос дальше
 };

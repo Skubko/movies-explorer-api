@@ -1,53 +1,82 @@
 const Movie = require('../models/movie');
-const NotValidId = require('../errors/NotValidId');
-const CastError = require('../errors/CastError');
-const ValidationError = require('../errors/ValidationError');
-const ForbiddenError = require('../errors/ForbiddenError');
+const BadRequestErrors = require('../errors/bad-request-err');
+const NotFoundError = require('../errors/not-found-err');
+const ForbiddenErrors = require('../errors/forbidden-err');
 
-const createMovies = (req, res, next) => {
-  const owner = req.user._id;
-  Movie.create({ ...req.body, owner })
-    .then((card) => {
-      res.send({ data: card });
-    }).catch((err) => {
-      if (err.name === 'ValidationError') {
-        throw new ValidationError('Переданы некорректные данные при создании фильма');
+// Получить все фильмы пользователя
+module.exports.getMovies = (req, res, next) => {
+  Movie.find({})
+    .then((movies) => {
+      res.send(movies);
+    })
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        next(new NotFoundError('Запрошенные карточки не найдены'));
       }
       next(err);
-    })
-    .catch(next);
+    });
 };
 
-const getMovies = (req, res, next) => {
-  Movie.find({}).then((movie) => {
-    res.send({ data: movie });
-  }).catch(next);
-};
-
-const deleteMovies = (req, res, next) => {
-  const owner = req.user._id;
-  Movie.findOne({ id: req.params._id }).then((deletedMovie) => {
-    if (!deletedMovie) {
-      throw new NotValidId('Фильм с указанным _id не найдена');
-    }
-    if (deletedMovie.owner.toString() !== owner.toString()) {
-      throw new ForbiddenError('Нельзя удалить чужой фильм');
-    }
-    return Movie.findByIdAndRemove(deletedMovie._id)
-      .then((movie) => {
-        res.send({ data: movie });
-      });
-  }).catch((err) => {
-    if (err.name === 'CastError') {
-      throw new CastError(' Переданы некорректные данные');
-    }
-    next(err);
+// Добавление нового фильма
+module.exports.addMovie = (req, res, next) => {
+  const {
+    country, director, duration, year, description, image,
+    trailer, thumbnail, movieId, nameRU, nameEN,
+  } = req.body;
+  const { _id } = req.user;
+  //
+  Movie.create({
+    country,
+    director,
+    duration,
+    year,
+    description,
+    image,
+    trailer,
+    thumbnail,
+    owner: _id,
+    movieId,
+    nameRU,
+    nameEN,
   })
-    .catch(next);
+    .then((movie) => {
+      res.send(movie);
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        next(new BadRequestErrors('Переданы некорректные данные карточки'));
+      }
+      next(err);
+    });
 };
 
-module.exports = {
-  createMovies,
-  getMovies,
-  deleteMovies,
+// Удалить фильм
+module.exports.deleteMovie = (req, res, next) => {
+  const { movieId } = req.params;
+  const { _id } = req.user;
+
+  Movie.findById(movieId)
+    .orFail(() => {
+      next(new NotFoundError('Фильм по данному ID не найден'));
+    })
+    .then((movie) => {
+      if (_id === movie.owner.toString() || null) {
+        Movie.findByIdAndRemove(movie)
+          .then((movieRemove) => {
+            res.send({ movieRemove });
+          })
+          .catch(next);
+      } else {
+        next(new ForbiddenErrors('Данная карточка принадлежит не вам'));
+      }
+    })
+    .catch((err) => {
+      if (err.message === 'NotValidID') {
+        next(new NotFoundError('Карточка с таким ID не нвйдена в базе'));
+      }
+      if (err.name === 'CastError') {
+        next(new BadRequestErrors('Передан некорректный ID карточки'));
+      }
+      next(err);
+    });
 };

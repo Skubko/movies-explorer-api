@@ -1,9 +1,9 @@
-const { ERROR_CODE_404 } = require('./errorCodes');
+// 404 ошибка: "Ресурс не найден"
 
 class NotFoundError extends Error {
   constructor(message) {
     super(message);
-    this.statusCode = ERROR_CODE_404;
+    this.statusCode = 404;
   }
 }
 
