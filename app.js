@@ -1,54 +1,33 @@
+require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
-const helmet = require('helmet');
+const cors = require('cors');
 const cookieParser = require('cookie-parser');
-
+const mongoose = require('mongoose');
+const helmet = require('helmet');
 const { errors } = require('celebrate');
-const limiter = require('./middlewares/limiter');
-const cors = require('./middlewares/cors');
-const { router } = require('./routes/index');
+const { optionsCORS } = require('./utils/constants');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
-const ErrorHandler = require('./middlewares/Central-Error-Handler');
-const {
-  optionsMongooseConfig,
-  mongoURL,
-  PORT,
-} = require('./utils/const');
+
+const { BD_URL = 'mongodb://localhost:27017/bitfilmsdb' } = process.env;
+
+mongoose.connect(BD_URL, {
+  useNewUrlParser: true,
+});
 
 const app = express();
 
-// Логер запросов
-app.use(requestLogger);
-
-// Контролер кол-ва запросов 1=>IP
-app.use(limiter);
-app.use(cookieParser());
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Конектинг БД
-mongoose.connect(mongoURL, optionsMongooseConfig);
-
-// Заголовки безопасности
+app.use(cors(optionsCORS));
 app.use(helmet());
 
-// cors
-app.use(cors);
+app.use(express.json());
+app.use(cookieParser());
 
-// Обработчики роутов
-app.use(router);
+app.use(requestLogger);
 
-// Логер ошибок
+app.use(require('./routers/index'));
+
 app.use(errorLogger);
-
-// Обработчик ошибок celebrate
 app.use(errors());
+app.use(require('./middlewares/errors'));
 
-// Централизованный обработчик ошибок
-app.use(ErrorHandler);
-
-app.listen(PORT, () => {
-  console.log(`Сервер запущен на ${PORT} порту`);
-});
+module.exports = app;
